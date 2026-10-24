@@ -27,6 +27,8 @@ def _setup_logging(config: Config, to_file: bool) -> None:
         handlers.append(logging.handlers.TimedRotatingFileHandler(
             config.logs_path / "kukicha.log", when="midnight", backupCount=14, encoding="utf-8"))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", handlers=handlers)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
 
 
 def _encoder(config: Config):

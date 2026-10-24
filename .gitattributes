@@ -1,0 +1,2 @@
+# Windows PowerShell 5.1 向けに、BOM と CRLF をそのまま残す
+*.ps1 -text
