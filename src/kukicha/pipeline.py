@@ -73,6 +73,7 @@ class Transcriber:
         store: SpeakerStore,
         *,
         threshold: float = 0.4,
+        pass_unenrolled: bool = False,
         min_utterance_ms: int = 400,
         min_embed_ms: int = 1000,
         busy_wait_seconds: float = 10.0,
@@ -83,6 +84,7 @@ class Transcriber:
         self.encoder = encoder
         self.store = store
         self.threshold = threshold
+        self.pass_unenrolled = pass_unenrolled
         self.min_utterance_ms = min_utterance_ms
         self.min_embed_samples = min_embed_ms * SAMPLE_RATE // 1000
         self.busy_wait_seconds = busy_wait_seconds
@@ -90,9 +92,11 @@ class Transcriber:
         # GPU を使う処理は 1 件ずつ
         self._lock = threading.Lock()
 
-    def voiceprint(self, speaker: str) -> Voiceprint:
+    def voiceprint(self, speaker: str) -> Voiceprint | None:
         vp = self.store.get(speaker)
         if vp is None:
+            if self.pass_unenrolled:
+                return None
             raise ToolError(f"speaker '{speaker}' is not enrolled")
         if vp.model != self.encoder.name:
             raise ToolError(f"speaker '{speaker}' was enrolled with {vp.model}; enroll again with {self.encoder.name}")
@@ -107,7 +111,7 @@ class Transcriber:
         finally:
             self._lock.release()
 
-    def _run(self, audio: np.ndarray, language: str, vp: Voiceprint, initial_prompt: str | None) -> Result:
+    def _run(self, audio: np.ndarray, language: str, vp: Voiceprint | None, initial_prompt: str | None) -> Result:
         spans = self.vad.speech_spans(audio)
         speech_ms = sum(e - s for s, e in spans) * 1000 // SAMPLE_RATE
         detail = {"audio_ms": len(audio) * 1000 // SAMPLE_RATE, "speech_ms": speech_ms, "segments": 0, "kept": 0}
@@ -125,6 +129,9 @@ class Transcriber:
         scores: list[float] = []
         for seg in segments:
             if is_noise(seg, self.phrases):
+                continue
+            if vp is None:
+                kept.append(seg)
                 continue
             score = self._score(speech, seg, vp)
             scores.append(round(score, 3))

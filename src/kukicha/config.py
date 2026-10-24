@@ -46,6 +46,8 @@ class Config:
     cpuThreads: int = 4
     speakerModel: str = ""
     speakerThreshold: float = 0.4
+    # 声の登録の前でも動かすため、未登録の speaker の発話を声で絞らずに返す。他の人の声も通る
+    passUnenrolled: bool = False
     vadThreshold: float = 0.5
     minUtteranceMs: int = 400
     minEmbedMs: int = 1000

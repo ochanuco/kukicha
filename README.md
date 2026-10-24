@@ -132,6 +132,7 @@ voiceprints, and logs (`C:\apps\kukicha\data` on Windows,
 | `cpuThreads` | `4` | |
 | `speakerModel` | `<data>/models/speaker/campplus.onnx` | |
 | `speakerThreshold` | `0.4` | Cosine similarity needed to keep a segment |
+| `passUnenrolled` | `false` | Return every voice for a speaker that is not enrolled, instead of an error. For running before enrollment; other people's voices pass through too |
 | `vadThreshold` | `0.5` | |
 | `minUtteranceMs` | `400` | |
 | `minEmbedMs` | `1000` | |
