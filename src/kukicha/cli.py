@@ -70,6 +70,7 @@ def cmd_serve(config: Config, config_dir: Path) -> int:
             _encoder(config),
             SpeakerStore(config.speakers_path),
             threshold=config.speakerThreshold,
+            pass_unenrolled=config.passUnenrolled,
             min_utterance_ms=config.minUtteranceMs,
             min_embed_ms=config.minEmbedMs,
             busy_wait_seconds=config.busyWaitSeconds,

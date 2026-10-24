@@ -95,6 +95,29 @@ def test_unknown_speaker_is_a_tool_error(store):
         t.transcribe(make_marked_audio(1), "ja", "999", None)
 
 
+def test_pass_unenrolled_keeps_every_voice(store):
+    t = transcriber(
+        store,
+        [Segment(0.0, 1.5, "こんにちは"), Segment(1.5, 3.0, "テレビの声"), Segment(3.0, 4.5, "ご視聴ありがとうございました")],
+        voices=[],
+        pass_unenrolled=True,
+    )
+    r = t.transcribe(make_marked_audio(5), "ja", "999", None)
+    assert r.text == "こんにちはテレビの声"
+    assert r.duration_ms == 3000
+
+
+def test_pass_unenrolled_still_filters_the_enrolled_speaker(store):
+    t = transcriber(
+        store,
+        [Segment(0.0, 1.5, "こんにちは"), Segment(1.5, 3.0, "テレビの声")],
+        voices=[(0.0, 1.5, OWNER_VEC)],
+        pass_unenrolled=True,
+    )
+    r = t.transcribe(make_marked_audio(5), "ja", OWNER, None)
+    assert r.text == "こんにちは"
+
+
 def test_voiceprint_from_another_model_is_a_tool_error(store):
     store.save(Voiceprint("200", "old.onnx", OWNER_VEC, 30.0), windows=10)
     t = transcriber(store, [], voices=[])

@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: ci / check (${{ matrix.os }})
+  test:
+    name: test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -27,3 +27,12 @@ jobs:
       - run: uv sync --frozen
 
       - run: uv run --frozen pytest
+
+  # ruleset が求める check 名は ci / check の 1 つなので、OS ごとの結果をここでまとめる
+  check:
+    name: ci / check
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.test.result }}" = success
