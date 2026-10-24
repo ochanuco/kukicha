@@ -1,0 +1,37 @@
+[project]
+name = "kukicha"
+version = "0.1.0"
+description = "A thin speech-to-text MCP server that transcribes only an enrolled speaker's voice"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "faster-whisper>=1.2.1",
+    "numpy>=2.5.4",
+    "sherpa-onnx>=2.0.0",
+    "starlette>=1.10.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.optional-dependencies]
+# ctranslate2 は CUDA 12 と cuDNN 9 を DLL として探す。GPU 機には CUDA Toolkit を入れず、wheel で揃える
+cuda = [
+    "nvidia-cublas-cu12>=12,<13; sys_platform == 'win32'",
+    "nvidia-cudnn-cu12>=9,<10; sys_platform == 'win32'",
+]
+
+[project.scripts]
+kukicha = "kukicha.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
