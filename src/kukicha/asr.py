@@ -43,12 +43,20 @@ class Runtime:
     compute_type: str
     model: str
     beam_size: int
+    idle_unload_seconds: float
 
 
-def resolve_runtime(device: str = "auto", compute_type: str = "auto", model: str = "auto", beam_size: int = 0) -> Runtime:
-    """auto（beam_size は 0 以下）を、使う device に合わせた値にする。
+def resolve_runtime(
+    device: str = "auto",
+    compute_type: str = "auto",
+    model: str = "auto",
+    beam_size: int = 0,
+    idle_unload_seconds: float = -1,
+) -> Runtime:
+    """auto（beam_size は 0 以下、idle_unload_seconds は負）を、使う device に合わせた値にする。
 
     CPU では large-v3-turbo が発話ごとに数秒かかるので、small とビーム幅 1 にする。
+    モデルを外すのは VRAM を他の GPU の仕事に返すためなので、CPU では外さない（0）。
     """
     if device == "auto":
         from .cuda import cuda_available
@@ -61,11 +69,13 @@ def resolve_runtime(device: str = "auto", compute_type: str = "auto", model: str
         model = "large-v3-turbo" if cuda else "small"
     if beam_size <= 0:
         beam_size = 5 if cuda else 1
-    return Runtime(device, compute_type, model, beam_size)
+    if idle_unload_seconds < 0:
+        idle_unload_seconds = 300 if cuda else 0
+    return Runtime(device, compute_type, model, beam_size, idle_unload_seconds)
 
 
 class WhisperAsr:
-    """faster-whisper のモデルを使う時に読み込み、使わない間が続けば捨てて VRAM を返す。"""
+    """faster-whisper のモデルを使う時に読み込み、使わない間が続けば捨てて VRAM を返す（0 なら捨てない）。"""
 
     def __init__(
         self,
@@ -75,7 +85,7 @@ class WhisperAsr:
         compute_type: str = "auto",
         beam_size: int = 0,
         cpu_threads: int = 4,
-        idle_unload_seconds: float = 300,
+        idle_unload_seconds: float = -1,
     ):
         self._model_name = model
         self._download_root = download_root
@@ -96,7 +106,9 @@ class WhisperAsr:
 
     def _resolve(self) -> Runtime:
         if self._runtime is None:
-            self._runtime = resolve_runtime(self._device, self._compute_type, self._model_name, self._beam_size)
+            self._runtime = resolve_runtime(
+                self._device, self._compute_type, self._model_name, self._beam_size, self._idle_unload_seconds
+            )
         return self._runtime
 
     def _load(self):
@@ -157,11 +169,14 @@ class WhisperAsr:
         if not self._lock.acquire(blocking=False):
             return False
         try:
-            if self._model is None or time.monotonic() - self._last_used < self._idle_unload_seconds:
+            if self._model is None:
+                return False
+            idle = self._resolve().idle_unload_seconds
+            if idle == 0 or time.monotonic() - self._last_used < idle:
                 return False
             self._drop()
             self._state = "idle"
-            log.info("unloaded whisper model after %ds idle", self._idle_unload_seconds)
+            log.info("unloaded whisper model after %ds idle", idle)
             return True
         finally:
             self._lock.release()

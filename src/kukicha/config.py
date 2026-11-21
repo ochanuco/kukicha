@@ -54,7 +54,8 @@ class Config:
     minUtteranceMs: int = 400
     minEmbedMs: int = 1000
     maxAudioSeconds: int = 120
-    idleUnloadSeconds: int = 300
+    # 負: cuda なら 300、cpu なら 0。0 はモデルを外さない
+    idleUnloadSeconds: float = -1
     busyWaitSeconds: float = 10.0
     extraHallucinations: list[str] = field(default_factory=list)
 
