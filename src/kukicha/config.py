@@ -37,12 +37,14 @@ class Config:
     host: str = "0.0.0.0"
     port: int = 8191
     dataDir: str = ""
-    whisperModel: str = "large-v3-turbo"
+    # auto: cuda なら large-v3-turbo、cpu なら small
+    whisperModel: str = "auto"
     # auto: CUDA が見えれば cuda、なければ cpu
     device: str = "auto"
     # auto: cuda なら int8_float16、cpu なら int8
     computeType: str = "auto"
-    beamSize: int = 5
+    # 0: cuda なら 5、cpu なら 1
+    beamSize: int = 0
     cpuThreads: int = 4
     speakerModel: str = ""
     speakerThreshold: float = 0.4

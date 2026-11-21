@@ -37,6 +37,33 @@ class Asr(Protocol):
     def unload_if_idle(self) -> bool: ...
 
 
+@dataclass(frozen=True)
+class Runtime:
+    device: str
+    compute_type: str
+    model: str
+    beam_size: int
+
+
+def resolve_runtime(device: str = "auto", compute_type: str = "auto", model: str = "auto", beam_size: int = 0) -> Runtime:
+    """auto（beam_size は 0 以下）を、使う device に合わせた値にする。
+
+    CPU では large-v3-turbo が発話ごとに数秒かかるので、small とビーム幅 1 にする。
+    """
+    if device == "auto":
+        from .cuda import cuda_available
+
+        device = "cuda" if cuda_available() else "cpu"
+    cuda = device == "cuda"
+    if compute_type == "auto":
+        compute_type = "int8_float16" if cuda else "int8"
+    if model == "auto":
+        model = "large-v3-turbo" if cuda else "small"
+    if beam_size <= 0:
+        beam_size = 5 if cuda else 1
+    return Runtime(device, compute_type, model, beam_size)
+
+
 class WhisperAsr:
     """faster-whisper のモデルを使う時に読み込み、使わない間が続けば捨てて VRAM を返す。"""
 
@@ -46,7 +73,7 @@ class WhisperAsr:
         download_root: str,
         device: str = "auto",
         compute_type: str = "auto",
-        beam_size: int = 5,
+        beam_size: int = 0,
         cpu_threads: int = 4,
         idle_unload_seconds: float = 300,
     ):
@@ -57,6 +84,7 @@ class WhisperAsr:
         self._beam_size = beam_size
         self._cpu_threads = cpu_threads
         self._idle_unload_seconds = idle_unload_seconds
+        self._runtime: Runtime | None = None
         self._lock = threading.Lock()
         self._model = None
         self._last_used = 0.0
@@ -66,32 +94,26 @@ class WhisperAsr:
     def state(self) -> str:
         return self._state
 
-    def _resolve(self) -> tuple[str, str]:
-        from .cuda import cuda_available
-
-        device = self._device
-        if device == "auto":
-            device = "cuda" if cuda_available() else "cpu"
-        compute_type = self._compute_type
-        if compute_type == "auto":
-            compute_type = "int8_float16" if device == "cuda" else "int8"
-        return device, compute_type
+    def _resolve(self) -> Runtime:
+        if self._runtime is None:
+            self._runtime = resolve_runtime(self._device, self._compute_type, self._model_name, self._beam_size)
+        return self._runtime
 
     def _load(self):
         from faster_whisper import WhisperModel
 
-        device, compute_type = self._resolve()
+        rt = self._resolve()
         self._state = "loading"
         started = time.monotonic()
         model = WhisperModel(
-            self._model_name,
-            device=device,
-            compute_type=compute_type,
+            rt.model,
+            device=rt.device,
+            compute_type=rt.compute_type,
             cpu_threads=self._cpu_threads,
             download_root=self._download_root,
         )
-        log.info("loaded whisper model=%s device=%s compute_type=%s ms=%d",
-                 self._model_name, device, compute_type, (time.monotonic() - started) * 1000)
+        log.info("loaded whisper model=%s device=%s compute_type=%s beam_size=%d ms=%d",
+                 rt.model, rt.device, rt.compute_type, rt.beam_size, (time.monotonic() - started) * 1000)
         return model
 
     def _drop(self) -> None:
@@ -108,7 +130,7 @@ class WhisperAsr:
                     audio,
                     language=language,
                     initial_prompt=initial_prompt,
-                    beam_size=self._beam_size,
+                    beam_size=self._resolve().beam_size,
                     vad_filter=False,
                     # 前の区間の文字に引きずられて同じ定型文を繰り返すのを防ぐ
                     condition_on_previous_text=False,

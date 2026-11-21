@@ -126,6 +126,9 @@ def cmd_unenroll(config: Config, speaker: str) -> int:
 def cmd_fetch_models(config: Config) -> int:
     from faster_whisper.utils import download_model
 
+    from .asr import resolve_runtime
+    from .cuda import add_nvidia_dll_dirs
+
     _setup_logging(config, to_file=False)
     target = config.speaker_model_path
     if not (target.is_file() and _sha256(target) == SPEAKER_MODEL_SHA256):
@@ -140,8 +143,10 @@ def cmd_fetch_models(config: Config) -> int:
             return 1
         tmp.replace(target)
     log.info("speaker model: %s", target)
-    log.info("whisper model %s: %s", config.whisperModel,
-             download_model(config.whisperModel, cache_dir=str(config.whisper_download_root)))
+    # serve と同じ model を取る。CUDA の有無は nvidia の DLL を足してから確かめる
+    add_nvidia_dll_dirs()
+    model = resolve_runtime(config.device, config.computeType, config.whisperModel, config.beamSize).model
+    log.info("whisper model %s: %s", model, download_model(model, cache_dir=str(config.whisper_download_root)))
     return 0
 
 

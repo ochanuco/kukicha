@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from kukicha.asr import WhisperAsr
+from kukicha.asr import Runtime, WhisperAsr, resolve_runtime
 from kukicha.audio import SAMPLE_RATE, AudioFormatError, decode_wav, load_wav_any
 from kukicha.auth import BearerAuthenticator, parse_tokens
 from kukicha.config import Config, load_config
@@ -116,3 +116,33 @@ def test_asr_load_failure_is_a_tool_error(monkeypatch):
     monkeypatch.setattr(asr, "_load", fail)
     with pytest.raises(ToolError, match="out of GPU memory"):
         asr.transcribe(np.zeros(16000, np.float32), "ja", None)
+
+
+def test_runtime_defaults_follow_the_device():
+    assert resolve_runtime("cpu") == Runtime("cpu", "int8", "small", 1)
+    assert resolve_runtime("cuda") == Runtime("cuda", "int8_float16", "large-v3-turbo", 5)
+
+
+def test_runtime_keeps_explicit_values():
+    assert resolve_runtime("cpu", "float32", "large-v3-turbo", 5) == Runtime("cpu", "float32", "large-v3-turbo", 5)
+
+
+def test_runtime_auto_device_uses_cuda_only_when_visible(monkeypatch):
+    import kukicha.cuda
+
+    monkeypatch.setattr(kukicha.cuda, "cuda_available", lambda: False)
+    assert resolve_runtime().model == "small"
+    monkeypatch.setattr(kukicha.cuda, "cuda_available", lambda: True)
+    assert resolve_runtime().model == "large-v3-turbo"
+
+
+def test_asr_uses_the_resolved_beam_size(monkeypatch):
+    seen = {}
+
+    class Model(_Model):
+        def transcribe(self, audio, **kw):
+            seen.update(kw)
+            return iter([]), None
+
+    _asr(monkeypatch, Model()).transcribe(np.zeros(16000, np.float32), "ja", None)
+    assert seen["beam_size"] == 1
