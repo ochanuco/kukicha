@@ -7,7 +7,7 @@ microphone. It has no character logic. It was written as the hearing backend
 for [yunomi](https://github.com/ochanuco/yunomi), next to
 [ochoko](https://github.com/ochanuco/ochoko), its voice.
 
-It runs on a Windows machine with an NVIDIA GPU as a logon scheduled task and
+It runs on a Windows machine, on an NVIDIA GPU when there is one, as a logon scheduled task and
 serves `http://0.0.0.0:8191/`. The firewall rule admits only the gateway
 addresses given at registration. It also runs on CPU, which is how it is
 developed and tested on macOS.
