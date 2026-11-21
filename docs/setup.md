@@ -8,9 +8,9 @@ rest is done once.
 
 - Windows 10 or 11, x64. With an NVIDIA driver that supports CUDA 12, Whisper
   runs on the GPU; the CUDA Toolkit and cuDNN are not needed, they come as
-  Python wheels. Without one, Whisper runs on the CPU. On a small CPU, set
-  `whisperModel` to `small` in `config.json`: `large-v3-turbo` takes several
-  seconds per utterance there.
+  Python wheels. Without one, Whisper runs on the CPU, and the defaults switch
+  to `small` with beam size 1: `large-v3-turbo` takes several seconds per
+  utterance there.
 - [uv](https://docs.astral.sh/uv/) on `PATH` for the user that runs
   `prepare.ps1` (or its full path in the environment variable `UV`). uv
   downloads its own Python into `C:\apps\kukicha\data\python`.

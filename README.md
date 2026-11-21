@@ -125,10 +125,10 @@ voiceprints, and logs (`C:\apps\kukicha\data` on Windows,
 |---|---|---|
 | `host`, `port` | `0.0.0.0`, `8191` | `register.ps1` only opens 8191 |
 | `dataDir` | see above | |
-| `whisperModel` | `large-v3-turbo` | A faster-whisper model name or a local CTranslate2 model directory |
+| `whisperModel` | `auto` | A faster-whisper model name or a local CTranslate2 model directory. `auto` is `large-v3-turbo` on CUDA and `small` on CPU |
 | `device` | `auto` | `cuda` if a CUDA device is visible, else `cpu` |
 | `computeType` | `auto` | `int8_float16` on CUDA, `int8` on CPU |
-| `beamSize` | `5` | |
+| `beamSize` | `0` | `0` is 5 on CUDA and 1 on CPU |
 | `cpuThreads` | `4` | |
 | `speakerModel` | `<data>/models/speaker/campplus.onnx` | |
 | `speakerThreshold` | `0.4` | Cosine similarity needed to keep a segment |
@@ -162,8 +162,8 @@ uv run kukicha serve
 ```
 
 The tests replace the models with fakes and finish in a few seconds on CPU.
-On macOS, `large-v3-turbo` on CPU takes a few seconds per short utterance;
-set `"whisperModel": "small"` in `config.json` for faster iteration.
+On macOS the defaults pick `small` with beam size 1, as on any machine without
+CUDA.
 
 ## License
 
