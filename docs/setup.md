@@ -6,8 +6,11 @@ rest is done once.
 
 ## Requirements
 
-- Windows 10 or 11, x64, with an NVIDIA driver that supports CUDA 12. The CUDA
-  Toolkit and cuDNN are not needed; they come as Python wheels.
+- Windows 10 or 11, x64. With an NVIDIA driver that supports CUDA 12, Whisper
+  runs on the GPU; the CUDA Toolkit and cuDNN are not needed, they come as
+  Python wheels. Without one, Whisper runs on the CPU. On a small CPU, set
+  `whisperModel` to `small` in `config.json`: `large-v3-turbo` takes several
+  seconds per utterance there.
 - [uv](https://docs.astral.sh/uv/) on `PATH` for the user that runs
   `prepare.ps1` (or its full path in the environment variable `UV`). uv
   downloads its own Python into `C:\apps\kukicha\data\python`.
@@ -50,7 +53,8 @@ cd "C:\apps\kukicha\releases\$version"
 ```
 
 It creates `C:\apps\kukicha\data\venv\<hash of uv.lock>` with `uv sync`
-(including the `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels), and puts
+(including the `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels when
+`nvidia-smi` is on `PATH`), and puts
 the Whisper and speaker models under `C:\apps\kukicha\data\models`. Releases
 with the same `uv.lock` share the venv, and venvs used by neither the running
 release nor the new one are deleted. The release's own code is not installed

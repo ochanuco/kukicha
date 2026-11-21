@@ -29,7 +29,9 @@ if (Test-Path -LiteralPath $marker) {
     Write-Host "==> venv $LockHash を作る"
     Push-Location $ReleaseDir
     try {
-        Invoke-Native { & $uv sync --frozen --no-dev --extra cuda --no-install-project } "uv sync"
+        # NVIDIA のドライバーがない機械では CUDA の wheel を取らない。Whisper は CPU で動く
+        $extras = if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { @("--extra", "cuda") } else { @() }
+        Invoke-Native { & $uv sync --frozen --no-dev @extras --no-install-project } "uv sync"
     } finally {
         Pop-Location
     }
