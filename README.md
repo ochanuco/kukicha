@@ -84,10 +84,12 @@ directory or the project root, falling back to the package version.
 
 ## GPU memory
 
-The machine is shared with other GPU workloads, so the Whisper model is loaded
-on the first call and unloaded after `idleUnloadSeconds` (300 s) without a
-call. The default is `large-v3-turbo` with `int8_float16` on CUDA (`int8` on
-CPU). The speaker model and the VAD run on CPU.
+The Whisper model is loaded on the first call. On CUDA the machine is shared
+with other GPU workloads, so the model is unloaded after `idleUnloadSeconds`
+(300 s) without a call to give the VRAM back. On CPU there is nothing to give
+back, so it stays loaded. The defaults are `large-v3-turbo` with `int8_float16`
+on CUDA and `small` with `int8` on CPU. The speaker model and the VAD run on
+CPU.
 
 ## Enrolling a speaker
 
@@ -137,7 +139,7 @@ voiceprints, and logs (`C:\apps\kukicha\data` on Windows,
 | `minUtteranceMs` | `400` | |
 | `minEmbedMs` | `1000` | |
 | `maxAudioSeconds` | `120` | |
-| `idleUnloadSeconds` | `300` | |
+| `idleUnloadSeconds` | `-1` | Unload the Whisper model after this many idle seconds. `-1` is 300 on CUDA and `0` on CPU; `0` never unloads |
 | `busyWaitSeconds` | `10` | |
 | `extraHallucinations` | `[]` | More phrases to drop, compared after removing spaces and punctuation |
 

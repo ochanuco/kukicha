@@ -79,7 +79,7 @@ def _asr(monkeypatch, model, **kw):
 
 
 def test_asr_loads_on_demand_and_unloads_when_idle(monkeypatch):
-    asr = _asr(monkeypatch, _Model(), idle_unload_seconds=0)
+    asr = _asr(monkeypatch, _Model(), idle_unload_seconds=1e-9)
     assert asr.state == "idle"
     assert asr.transcribe(np.zeros(16000, np.float32), "ja", None) == []
     assert asr.state == "ready"
@@ -119,12 +119,12 @@ def test_asr_load_failure_is_a_tool_error(monkeypatch):
 
 
 def test_runtime_defaults_follow_the_device():
-    assert resolve_runtime("cpu") == Runtime("cpu", "int8", "small", 1)
-    assert resolve_runtime("cuda") == Runtime("cuda", "int8_float16", "large-v3-turbo", 5)
+    assert resolve_runtime("cpu") == Runtime("cpu", "int8", "small", 1, 0)
+    assert resolve_runtime("cuda") == Runtime("cuda", "int8_float16", "large-v3-turbo", 5, 300)
 
 
 def test_runtime_keeps_explicit_values():
-    assert resolve_runtime("cpu", "float32", "large-v3-turbo", 5) == Runtime("cpu", "float32", "large-v3-turbo", 5)
+    assert resolve_runtime("cpu", "float32", "large-v3-turbo", 5, 60) == Runtime("cpu", "float32", "large-v3-turbo", 5, 60)
 
 
 def test_runtime_auto_device_uses_cuda_only_when_visible(monkeypatch):
@@ -146,3 +146,10 @@ def test_asr_uses_the_resolved_beam_size(monkeypatch):
 
     _asr(monkeypatch, Model()).transcribe(np.zeros(16000, np.float32), "ja", None)
     assert seen["beam_size"] == 1
+
+
+def test_asr_on_cpu_keeps_the_model_by_default(monkeypatch):
+    asr = _asr(monkeypatch, _Model())
+    asr.transcribe(np.zeros(16000, np.float32), "ja", None)
+    asr._last_used -= 10**6
+    assert asr.unload_if_idle() is False and asr.state == "ready"
